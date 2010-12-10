@@ -1,6 +1,6 @@
 
 Libraries for Standard ML
 
-    Dict    - hashtables
-    List    - mutable lists  
-    RegExp  - regular expressions
+    Hashtable   - hashtables
+    DArray      - dynamic arrays
+    RegExp      - regular expressions

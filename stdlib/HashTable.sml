@@ -170,11 +170,13 @@ structure HashTable : sig
     type ('a, 'b) hashtable
 
     val new : unit -> ('a,'b) hashtable
+    val len : ('a, 'b) hashtable ->  int
+
     val set : ('a, 'b) hashtable -> ('a * 'b) -> unit
     val get : ('a, 'b) hashtable -> 'a -> 'b
     val pop : ('a, 'b) hashtable -> 'a -> 'b
-    val contains : ('a, 'b) hashtable -> 'a -> bool
-    val len : ('a, 'b) hashtable ->  int
+    val has : ('a, 'b) hashtable -> 'a -> bool
+    
 
     val toList : ('a, 'b) hashtable -> ('a * 'b) list
     val fromList : ('a * 'b) list -> ('a, 'b) hashtable
@@ -265,7 +267,7 @@ structure HashTable : sig
 	    item
 	  end (* remove *)
 
-    fun contains (HT{hash_fn, eq_pred, table, ...}) key = let
+    fun has (HT{hash_fn, eq_pred, table, ...}) key = let
 	  val arr = !table
 	  val hash = hash_fn key
 	  val indx = index (hash, Array.length arr)
