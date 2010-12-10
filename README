@@ -1,2 +1,15 @@
 
 Libraries and hacks for Standard ML
+
+To bootstrap the compiler, use
+    mlton aml.sml
+
+To compile the examples, use
+    aml example.aml
+
+The compiler accepts mixed source of Standard ML and AML.
+    aml example.sml
+
+For now the only difference between the two is the 
+    use "another_file.sml"; 
+syntax extension.
