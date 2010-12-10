@@ -15,7 +15,7 @@
  *	    jhr@research.att.com
  *)
 
-structure DictRep : sig
+structure HashTableRep : sig
 
     datatype ('a, 'b) bucket
       = NIL
@@ -131,7 +131,7 @@ structure DictRep : sig
     fun copy table =
 	  Array.tabulate (Array.length table, fn i => Array.sub(table, i));
 
-  end (* DictRep *)
+  end (* HashTableRep *)
 
 
 
@@ -166,33 +166,31 @@ structure DictRep : sig
  *	    jhr@research.att.com
  *)
 
-structure Dict : sig
-    type ('a, 'b) dict
+structure HashTable : sig
+    type ('a, 'b) hashtable
 
-    val new : unit -> ('a,'b) dict
-    val set : ('a, 'b) dict -> ('a * 'b) -> unit
-    val get : ('a, 'b) dict -> 'a -> 'b
-    val pop : ('a, 'b) dict -> 'a -> 'b
-    val contains : ('a, 'b) dict -> 'a -> bool
-    val len : ('a, 'b) dict ->  int
+    val new : unit -> ('a,'b) hashtable
+    val set : ('a, 'b) hashtable -> ('a * 'b) -> unit
+    val get : ('a, 'b) hashtable -> 'a -> 'b
+    val pop : ('a, 'b) hashtable -> 'a -> 'b
+    val contains : ('a, 'b) hashtable -> 'a -> bool
+    val len : ('a, 'b) hashtable ->  int
 
-    val toList : ('a, 'b) dict -> ('a * 'b) list
-    val fromList : ('a * 'b) list -> ('a, 'b) dict
+    val toList : ('a, 'b) hashtable -> ('a * 'b) list
+    val fromList : ('a * 'b) list -> ('a, 'b) hashtable
 
-    val app : ('a, 'b) dict -> (('a * 'b) -> unit) -> unit
-    val map : ('a, 'b) dict -> (('a * 'b) -> 'c) -> ('a, 'c) dict
-    val filter : ('a, 'b) dict -> (('a * 'b) -> bool) -> unit
-    val copy : ('a, 'b) dict -> ('a, 'b) dict
+    val app : ('a, 'b) hashtable -> (('a * 'b) -> unit) -> unit
+    val map : ('a, 'b) hashtable -> (('a * 'b) -> 'c) -> ('a, 'c) hashtable
+    val filter : ('a, 'b) hashtable -> (('a * 'b) -> bool) -> unit
+    val copy : ('a, 'b) hashtable -> ('a, 'b) hashtable
   end = struct
-
     exception KeyError
 
-    structure HTRep = DictRep
+    structure HTRep = HashTableRep
 
-    datatype ('a, 'b) dict = HT of {
+    datatype ('a, 'b) hashtable = HT of {
 	    hash_fn : 'a -> word,
 	    eq_pred : ('a * 'a) -> bool,
-	    not_found : exn,
 	    table : ('a, 'b) HTRep.table ref,
 	    n_items : int ref
     }
@@ -204,16 +202,15 @@ structure Dict : sig
 	  in
 	    f 32
 	  end
-    fun mkTable (hash, eq) (sizeHint, notFound) = HT{
+    fun mkTable (hash, eq) (sizeHint) = HT{
 	    hash_fn = hash,
 	    eq_pred = eq,
-	    not_found = notFound,
 	    table = ref (HTRep.alloc sizeHint),
 	    n_items = ref 0
 	  }
 
 
-    fun new () = mkTable (MLton.hash,MLton.equal) (11,KeyError)
+    fun new () = mkTable (MLton.hash,MLton.equal) (11)
 
 
     fun set (tbl as HT{hash_fn, eq_pred, table, n_items, ...}) (key, item) = let
@@ -239,12 +236,12 @@ structure Dict : sig
 	      | b => Array.update(arr, indx, b)
 	  end
 
-    fun get (HT{hash_fn, eq_pred, table, not_found, ...}) key = let
+    fun get (HT{hash_fn, eq_pred, table, ...}) key = let
 	  val arr = !table
 	  val sz = Array.length arr
 	  val hash = hash_fn key
 	  val indx = index (hash, sz)
-	  fun look HTRep.NIL = raise not_found
+	  fun look HTRep.NIL = raise KeyError
 	    | look (HTRep.B(h, k, v, r)) = if ((hash = h) andalso eq_pred(key, k))
 		then v
 		else look r
@@ -252,12 +249,12 @@ structure Dict : sig
 	    look (Array.sub (arr, indx))
 	  end
 
-    fun pop (HT{hash_fn, eq_pred, not_found, table, n_items}) key = let
+    fun pop (HT{hash_fn, eq_pred, table, n_items}) key = let
 	  val arr = !table
 	  val sz = Array.length arr
 	  val hash = hash_fn key
 	  val indx = index (hash, sz)
-	  fun look HTRep.NIL = raise not_found
+	  fun look HTRep.NIL = raise KeyError
 	    | look (HTRep.B(h, k, v, r)) = if ((hash = h) andalso eq_pred(key, k))
 		then (v, r)
 		else let val (item, r') = look r in (item, HTRep.B(h, k, v, r')) end
@@ -293,23 +290,21 @@ structure Dict : sig
 
     fun app (HT{table, ...}) f = HTRep.app f (! table)
 
-    fun map (HT{hash_fn, eq_pred, table, n_items, not_found}) f = HT{
+    fun map (HT{hash_fn, eq_pred, table, n_items}) f = HT{
 	    hash_fn = hash_fn, eq_pred = eq_pred,
 	    table = ref(HTRep.map f (! table)),
-	    n_items = ref(!n_items),
-	    not_found = not_found
+	    n_items = ref(!n_items)
 	  }
 
     fun filter (HT{table, n_items, ...}) pred =
 	  n_items := HTRep.filter pred (! table)
 
-    fun copy (HT{hash_fn, eq_pred, table, n_items, not_found}) =HT{
+    fun copy (HT{hash_fn, eq_pred, table, n_items}) =HT{
 	    hash_fn = hash_fn, eq_pred = eq_pred,
-	    table = ref(HTRep.copy (! table)), n_items = ref(!n_items),
-	    not_found = not_found
+	    table = ref(HTRep.copy (! table)), n_items = ref(!n_items)
 	  }
 
-  end (* Dict *)
+  end (* HashTable *)
 
 
 

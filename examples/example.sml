@@ -2,12 +2,14 @@
 
 (* hashtables *)
 
-val d = Dict.new () : (string,string) Dict.dict;
-Dict.set d ("a","b");
-print (Dict.get d "a");
+val ht = HashTable.new () : (string,string) HashTable.hashtable;
+HashTable.set ht ("a","b");
+print (HashTable.get ht "c");
 
+(* Dynamic Arrays *)
 
-(* mutable lists *)
+val da = DArray.new () : (string) DArray;
+DArray.append da "a";
 
 
 
